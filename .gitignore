@@ -1,0 +1,11 @@
+# build output and local tool state
+/dist/
+*.zip
+*.exe
+*.old
+node_modules/
+.wrangler/
+.dev.vars
+*.log
+Thumbs.db
+desktop.ini

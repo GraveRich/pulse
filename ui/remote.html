@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0a0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Pulse remote</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+:root { --bg: #0a0a0d; --panel: #14141a; --panel-2: #1c1c25; --line: #262631; --text: #f2f2f7; --muted: #9a9aaa; --faint: #6c6c7c; --accent: #a970ff; --accent-2: #7c3aed; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 15px/1.35 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+svg { width: 100%; height: 100%; fill: currentColor; display: block; }
+[hidden] { display: none !important; }
+#app { height: 100%; max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+header { display: flex; align-items: center; gap: 10px; padding: 14px 20px 6px; flex: none; }
+header img { width: 24px; height: 24px; border-radius: 6px; }
+header b { font-size: 17px; font-weight: 600; flex: 1; }
+#conn { font-size: 12px; color: var(--faint); display: flex; align-items: center; gap: 6px; }
+#conn i { width: 7px; height: 7px; border-radius: 50%; background: #e5484d; }
+#conn.ok i { background: #3ecf8e; }
+main { flex: 1; min-height: 0; position: relative; }
+.pane { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 6px 20px 16px; }
+nav { flex: none; display: flex; border-top: 1px solid var(--line); background: var(--panel); }
+nav button { flex: 1; padding: 9px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: var(--faint); }
+nav button i { width: 22px; height: 22px; }
+nav button.on { color: var(--accent); }
+
+/* now playing */
+#now { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; }
+#art { width: min(72vw, 300px, 42vh); aspect-ratio: 1; border-radius: 18px; background: linear-gradient(135deg, #3b2670, #17102e); box-shadow: 0 18px 50px rgba(0, 0, 0, .55); overflow: hidden; position: relative; flex: none; }
+#art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+#art i { position: absolute; inset: 32%; color: rgba(255, 255, 255, .55); }
+#title { margin-top: 22px; font-size: 20px; font-weight: 600; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#artist { margin-top: 3px; color: var(--muted); text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row { width: 100%; display: flex; align-items: center; gap: 12px; }
+#seekrow { margin-top: 20px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#seekrow span { width: 38px; }
+#seekrow span:last-child { text-align: right; }
+input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 28px; background: none; margin: 0; --p: 0%; }
+input[type=range]::-webkit-slider-runnable-track { height: 5px; border-radius: 3px; background: linear-gradient(to right, var(--accent) var(--p), #2e2e3a var(--p)); }
+input[type=range]::-moz-range-track { height: 5px; border-radius: 3px; background: #2e2e3a; }
+input[type=range]::-moz-range-progress { height: 5px; border-radius: 3px; background: var(--accent); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5.5px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .5); }
+input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: #fff; }
+#ctl { margin-top: 10px; justify-content: space-between; }
+#ctl button { width: 46px; height: 46px; padding: 11px; color: var(--muted); border-radius: 50%; }
+#ctl button:active { background: var(--panel-2); }
+#ctl button.on { color: var(--accent); }
+#ctl .big { padding: 9px; color: var(--text); width: 52px; height: 52px; }
+#ctl #play { width: 68px; height: 68px; padding: 19px; background: #fff; color: #0a0a0d; }
+#ctl #play:active { transform: scale(.95); background: #ddd; }
+#ctl #play.loading { opacity: .6; }
+#volrow { margin-top: 14px; color: var(--muted); }
+#volrow i { width: 20px; height: 20px; flex: none; }
+#like { width: 40px; height: 40px; padding: 9px; color: var(--muted); flex: none; }
+#like.on { color: var(--accent); }
+#lockmsg { margin-top: 10px; min-height: 18px; font-size: 12px; color: var(--faint); text-align: center; }
+#lockmsg.on { color: #3ecf8e; }
+
+/* lists */
+.search { display: flex; align-items: center; gap: 10px; background: var(--panel-2); border-radius: 12px; padding: 0 14px; position: sticky; top: 0; z-index: 2; box-shadow: 0 0 0 8px var(--bg); }
+.search i { width: 18px; height: 18px; color: var(--faint); flex: none; }
+.search input { flex: 1; min-width: 0; height: 46px; background: none; border: 0; outline: 0; color: var(--text); font: inherit; font-size: 16px; user-select: text; -webkit-user-select: text; }
+.item { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.item .th { width: 48px; height: 48px; border-radius: 8px; background: var(--panel-2) center / cover; flex: none; }
+.item .tt { flex: 1; min-width: 0; }
+.item .t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .a { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .add { width: 40px; height: 40px; padding: 9px; color: var(--muted); flex: none; border-radius: 50%; }
+.item .add:active { background: var(--panel-2); color: var(--accent); }
+.item:active .t { color: var(--accent); }
+.note { color: var(--muted); text-align: center; padding: 34px 10px; }
+h2 { font-size: 13px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; margin: 14px 0 6px; }
+.list { margin-top: 12px; }
+
+/* pairing */
+#pair { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; z-index: 10; }
+#pair img { width: 64px; height: 64px; border-radius: 16px; }
+#pair h1 { font-size: 22px; margin: 18px 0 6px; font-weight: 600; }
+#pair p { color: var(--muted); margin: 0 0 22px; max-width: 300px; }
+#code { width: 220px; height: 58px; text-align: center; font: 600 28px/1 Inter, system-ui, sans-serif; letter-spacing: .3em; padding-left: .3em; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 14px; outline: 0; user-select: text; -webkit-user-select: text; }
+#code:focus { border-color: var(--accent); }
+#pairmsg { height: 20px; margin-top: 14px; color: #ff8a8a; font-size: 14px; }
+#toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #2a2a36; padding: 9px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 5; white-space: nowrap; }
+#toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header><img src="icon.png" alt=""><b>Pulse</b><div id="conn"><i></i><span>Connecting</span></div></header>
+  <main>
+    <section class="pane" id="p-now">
+      <div id="now">
+        <div id="art"><i data-ic="music"></i></div>
+        <div id="title">Nothing playing</div>
+        <div id="artist">Search for a song to start</div>
+        <div class="row" id="seekrow"><span id="cur">0:00</span><input type="range" id="seek" min="0" max="1000" value="0"><span id="dur">0:00</span></div>
+        <div class="row" id="ctl">
+          <button id="shuffle" data-ic="shuffle" aria-label="Shuffle"></button>
+          <button id="prev" class="big" data-ic="prev" aria-label="Previous"></button>
+          <button id="play" data-ic="play" aria-label="Play or pause"></button>
+          <button id="next" class="big" data-ic="next" aria-label="Next"></button>
+          <button id="repeat" data-ic="repeat" aria-label="Repeat"></button>
+        </div>
+        <div class="row" id="volrow"><i data-ic="vol"></i><input type="range" id="vol" min="0" max="100" value="80"><button id="like" data-ic="hearto" aria-label="Like"></button></div>
+        <div id="lockmsg"></div>
+      </div>
+    </section>
+    <section class="pane" id="p-search" hidden>
+      <label class="search"><i data-ic="search"></i><input id="q" type="search" placeholder="Search any song" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"></label>
+      <div class="list" id="results"><div class="note">Type a song or an artist. Tap a result to play it on your PC.</div></div>
+    </section>
+    <section class="pane" id="p-queue" hidden>
+      <div class="list" id="queue"></div>
+    </section>
+  </main>
+  <nav>
+    <button data-tab="now" class="on"><i data-ic="music"></i>Playing</button>
+    <button data-tab="search"><i data-ic="search"></i>Search</button>
+    <button data-tab="queue"><i data-ic="queue"></i>Queue</button>
+  </nav>
+</div>
+<div id="pair" hidden>
+  <img src="icon.png" alt="">
+  <h1>Pair with Pulse</h1>
+  <p>On your PC, open Pulse &gt; Settings &gt; Phone remote and type the 6-digit code shown there.</p>
+  <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+  <div id="pairmsg"></div>
+</div>
+<div id="toast"></div>
+<script>
+(() => {
+'use strict';
+const IC = {
+  play: 'M8 5v14l11-7z', pause: 'M6 19h4V5H6v14zm8-14v14h4V5h-4z',
+  next: 'M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z', prev: 'M6 6h2v12H6zm3.5 6l8.5 6V6z',
+  shuffle: 'M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z',
+  repeat: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z',
+  repeat1: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z',
+  heart: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
+  hearto: 'M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z',
+  vol: 'M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z',
+  music: 'M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z',
+  search: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+  queue: 'M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z',
+  plus: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'
+};
+const $ = s => document.querySelector(s);
+const svg = n => '<svg viewBox="0 0 24 24"><path d="' + IC[n] + '"/></svg>';
+const setIc = (el, n) => { if (el.dataset.ic !== n || !el.firstChild) { el.dataset.ic = n; el.innerHTML = svg(n); } };
+for (const el of document.querySelectorAll('[data-ic]')) el.insertAdjacentHTML('afterbegin', svg(el.dataset.ic));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = ms => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0'); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const store = { get(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, set(k, v) { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} } };
+
+let pendingCode = (location.hash.match(/\d{6}/) || [])[0] || '';
+let KEY = store.get('pulse-key'), ST = null, VER = -1, recvAt = 0, baseT = 0, loop = 0, dragSeek = false, dragVol = 0, results = [];
+
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1600); }
+function setConn(ok) { const c = $('#conn'); c.classList.toggle('ok', ok); c.lastElementChild.textContent = ok ? 'Connected' : 'Reconnecting'; }
+
+async function api(path, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({ 'X-Key': KEY }, opts.headers || {});
+  const r = await fetch(path, opts);
+  if (r.status === 401) {
+    // this phone was forgotten: pair again, straight away when the address came with a fresh code
+    KEY = ''; store.set('pulse-key', '');
+    const c = pendingCode; pendingCode = '';
+    if (c) pair(c).then(ok => { if (!ok) showPair(); }); else showPair();
+    throw new Error('unpaired');
+  }
+  if (!r.ok) throw new Error('http ' + r.status);
+  return r.json();
+}
+const cmd = c => api('cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c) }).catch(() => { toast("Couldn't reach Pulse"); });
+
+// ---- pairing
+function showPair() { $('#pair').hidden = false; loop++; setTimeout(() => $('#code').focus(), 100); }
+async function pair(code) {
+  $('#pairmsg').textContent = '';
+  try {
+    const r = await fetch('pair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.key) { $('#pairmsg').textContent = d.error || 'That did not work'; $('#code').value = ''; return false; }
+    KEY = d.key; store.set('pulse-key', KEY);
+    $('#pair').hidden = true; $('#code').blur();
+    start();
+    return true;
+  } catch (e) { $('#pairmsg').textContent = "Can't reach Pulse. Same Wi-Fi as the PC?"; return false; }
+}
+$('#code').addEventListener('input', e => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); e.target.value = v; if (v.length === 6) pair(v); });
+
+// ---- state
+function start() {
+  const me = ++loop;
+  (async () => {
+    while (me === loop && KEY) {
+      try {
+        const r = await api('state?v=' + VER);
+        if (me !== loop) return;
+        VER = r.v;
+        if (r.s) { ST = r.s; recvAt = performance.now(); baseT = ST.t + (ST.playing ? (r.age || 0) : 0); render(); }
+        setConn(true);
+      } catch (e) {
+        if (!KEY || me !== loop) return;
+        setConn(false); VER = -1;
+        await sleep(1500);
+      }
+    }
+  })();
+}
+const posNow = () => (!ST ? 0 : Math.min(ST.dur || Infinity, baseT + (ST.playing ? performance.now() - recvAt : 0)));
+function setRange(el, v) { el.value = v; el.style.setProperty('--p', (100 * (v - el.min) / (el.max - el.min || 1)) + '%'); }
+function tickPos() {
+  if (!ST || dragSeek) return;
+  const t = posNow(), d = ST.dur || 0;
+  $('#cur').textContent = fmt(t); $('#dur').textContent = fmt(d);
+  setRange($('#seek'), d ? Math.round(1000 * t / d) : 0);
+}
+const artUrl = a => (!a ? '' : (/^https?:/.test(a) ? a : a + '?key=' + encodeURIComponent(KEY)));
+function render() {
+  const c = ST && ST.cur;
+  $('#title').textContent = c ? (c.title || 'Loading…') : 'Nothing playing';
+  $('#artist').textContent = c ? c.artist : 'Search for a song to start';
+  const art = $('#art'), src = c ? artUrl(c.art) : '';
+  if (art.dataset.src !== src) {
+    art.dataset.src = src;
+    const old = art.querySelector('img'); if (old) old.remove();
+    if (src) { const im = new Image(); im.onerror = () => im.remove(); im.src = src; art.appendChild(im); }
+  }
+  const p = $('#play');
+  setIc(p, ST && ST.playing ? 'pause' : 'play'); p.classList.toggle('loading', !!(ST && ST.loading));
+  $('#shuffle').classList.toggle('on', !!(ST && ST.shuffle));
+  const r = $('#repeat'); r.classList.toggle('on', !!(ST && ST.repeat !== 'off')); setIc(r, ST && ST.repeat === 'one' ? 'repeat1' : 'repeat');
+  const l = $('#like'); l.classList.toggle('on', !!(c && c.liked)); setIc(l, c && c.liked ? 'heart' : 'hearto'); l.style.visibility = c ? '' : 'hidden';
+  if (ST && Date.now() - dragVol > 900) setRange($('#vol'), Math.round((ST.vol || 0) * 100));
+  tickPos();
+  renderQueue();
+  syncLock();
+  document.title = c && c.title ? c.title + ' · Pulse' : 'Pulse remote';
+}
+function item(t, i, add) {
+  const a = artUrl(t.art);
+  return '<div class="item" data-i="' + i + '"><div class="th"' + (a ? ' style="background-image:url(&quot;' + esc(a) + '&quot;)"' : '') + '></div><div class="tt"><div class="t">' + esc(t.title || 'Track') + '</div><div class="a">' + esc(t.artist || '') + (t.dur ? ' · ' + fmt(t.dur) : '') + '</div></div>' +
+    (add ? '<button class="add" data-add="' + i + '" aria-label="Add to queue">' + svg('plus') + '</button>' : '') + '</div>';
+}
+function renderQueue() {
+  const q = (ST && ST.queue) || [], el = $('#queue');
+  const key = JSON.stringify(q.map(x => [x.i, x.title]));
+  if (el.dataset.key === key) return;
+  el.dataset.key = key;
+  el.innerHTML = q.length ? '<h2>Next up</h2>' + q.map(t => item(t, t.i, false)).join('') : '<div class="note">Nothing queued after this song.</div>';
+}
+setInterval(tickPos, 500);
+
+// ---- lock screen
+// A phone only shows "Now Playing" on its lock screen for something that plays sound on the phone itself.
+// So after the first tap this page loops a silent sound and tells the phone, through the Media Session API,
+// that it is the PC's song: the lock screen (and headphone buttons) then show and control Pulse.
+const LOCK = { armed: false, hold: 0, key: '', audio: null, last: 0, mine: 0, acted: 0, ok: 'mediaSession' in navigator && typeof MediaMetadata === 'function' };
+window.__lock = LOCK;
+const LOCK_LEN = 600, LOCK_MID = 300; // the silent sound is 10 minutes long and kept near its middle
+function silentWav(seconds) {
+  const rate = 8000, n = rate * seconds, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+  const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+}
+function lockMsg() {
+  const el = $('#lockmsg');
+  el.classList.toggle('on', LOCK.ok && LOCK.armed);
+  el.textContent = !LOCK.ok ? '' : (LOCK.armed ? 'Showing on your lock screen' : 'Tap anything once to show Pulse on your lock screen');
+}
+// moves the silent sound back to its middle (our own move, so it is not mistaken for a skip button)
+function recentre() {
+  const au = LOCK.audio;
+  if (!au) return;
+  LOCK.mine = Date.now() + 1200;
+  LOCK.last = LOCK_MID;
+  try { au.currentTime = LOCK_MID; } catch (e) {}
+}
+// Lock-screen buttons. iPhones only swap their default "10 seconds back / forward" buttons for
+// "previous / next song" when these are registered once the sound is really playing, with the two
+// skip actions explicitly cleared, so this runs again every time playback starts.
+function bindLock() {
+  if (!LOCK.ok) return;
+  const act = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f); } catch (e) {} };
+  const local = playing => { LOCK.hold = Date.now() + 2000; if (ST) { baseT = posNow(); recvAt = performance.now(); ST.playing = playing; render(); } };
+  act('play', () => { if (LOCK.audio) LOCK.audio.play().catch(() => {}); local(true); cmd({ cmd: 'resume' }); });
+  act('pause', () => { if (LOCK.audio) LOCK.audio.pause(); local(false); cmd({ cmd: 'pause' }); });
+  act('seekbackward', null);
+  act('seekforward', null);
+  act('nexttrack', () => lockSkip('next'));
+  act('previoustrack', () => lockSkip('prev'));
+  act('seekto', d => { if (d && d.seekTime != null && ST) { baseT = d.seekTime * 1000; recvAt = performance.now(); cmd({ cmd: 'seek', ms: Math.round(d.seekTime * 1000) }); syncLock(); } });
+}
+function lockSkip(dir) {
+  if (Date.now() - LOCK.acted < 350) return; // one press, one song
+  LOCK.acted = Date.now();
+  cmd({ cmd: dir });
+}
+function armLock() {
+  if (!LOCK.ok || LOCK.armed) return;
+  if (!LOCK.audio) {
+    const au = LOCK.audio = new Audio(silentWav(LOCK_LEN));
+    au.loop = true; au.preload = 'auto';
+    au.addEventListener('loadedmetadata', recentre);
+    au.addEventListener('playing', bindLock);
+    au.addEventListener('timeupdate', () => {
+      if (au.seeking || Date.now() < LOCK.mine) return;
+      LOCK.last = au.currentTime;
+      if (au.currentTime > LOCK_LEN - 120 || au.currentTime < 120) recentre();
+    });
+    // Fallback: if the phone still shows its 10-second skip buttons, a press moves the silent sound by
+    // about 10 seconds. That jump is read as "next song" (forward) or "previous song" (back).
+    au.addEventListener('seeking', () => {
+      if (Date.now() < LOCK.mine) return;
+      const d = au.currentTime - LOCK.last;
+      if (Math.abs(d) < 4) return;
+      lockSkip(d > 0 ? 'next' : 'prev');
+      recentre();
+    });
+  }
+  LOCK.armed = true;
+  LOCK.audio.play().then(() => { bindLock(); if (!(ST && ST.playing)) LOCK.audio.pause(); syncLock(); lockMsg(); }, () => { LOCK.armed = false; lockMsg(); });
+}
+function syncLock() {
+  if (!LOCK.ok) return;
+  const ms = navigator.mediaSession, c = ST && ST.cur;
+  if (c) {
+    const art = artUrl(c.art), key = c.title + '|' + c.artist + '|' + art;
+    if (key !== LOCK.key) {
+      LOCK.key = key;
+      try { ms.metadata = new MediaMetadata({ title: c.title || 'Pulse', artist: c.artist || '', album: 'Pulse', artwork: art ? [{ src: new URL(art, location.href).href, sizes: '320x180', type: 'image/jpeg' }] : [] }); } catch (e) {}
+      bindLock();
+    }
+  }
+  const playing = !!(ST && ST.playing);
+  if (LOCK.armed && LOCK.audio && Date.now() > LOCK.hold) {
+    if (playing && LOCK.audio.paused) LOCK.audio.play().catch(() => {});
+    else if (!playing && !LOCK.audio.paused) LOCK.audio.pause();
+  }
+  try { ms.playbackState = playing ? 'playing' : 'paused'; } catch (e) {}
+  try { if (ms.setPositionState && ST && ST.dur > 0) ms.setPositionState({ duration: ST.dur / 1000, position: Math.max(0, Math.min(ST.dur, posNow())) / 1000, playbackRate: 1 }); } catch (e) {}
+}
+if (LOCK.ok) {
+  bindLock();
+  // any real tap counts; it has to be an event the phone accepts as "the user asked for sound"
+  for (const ev of ['click', 'touchend', 'keydown']) document.addEventListener(ev, armLock, true);
+}
+lockMsg();
+
+// ---- controls
+$('#play').addEventListener('click', () => {
+  const want = !(ST && ST.playing);
+  LOCK.hold = Date.now() + 2000;
+  if (ST) { baseT = posNow(); recvAt = performance.now(); ST.playing = want; render(); }
+  if (LOCK.armed && LOCK.audio) { if (want) LOCK.audio.play().catch(() => {}); else LOCK.audio.pause(); }
+  cmd({ cmd: want ? 'resume' : 'pause' });
+});
+$('#next').addEventListener('click', () => cmd({ cmd: 'next' }));
+$('#prev').addEventListener('click', () => cmd({ cmd: 'prev' }));
+$('#shuffle').addEventListener('click', () => cmd({ cmd: 'shuffle' }));
+$('#repeat').addEventListener('click', () => cmd({ cmd: 'repeat' }));
+$('#like').addEventListener('click', () => cmd({ cmd: 'like' }));
+const seek = $('#seek'), vol = $('#vol');
+seek.addEventListener('input', () => { dragSeek = true; setRange(seek, +seek.value); if (ST) $('#cur').textContent = fmt((ST.dur || 0) * seek.value / 1000); });
+seek.addEventListener('change', () => { if (ST && ST.dur) { const ms = Math.round(ST.dur * seek.value / 1000); baseT = ms; recvAt = performance.now(); cmd({ cmd: 'seek', ms }); } dragSeek = false; });
+let volT = 0, volLast = 0;
+vol.addEventListener('input', () => {
+  dragVol = Date.now(); setRange(vol, +vol.value);
+  const send = () => { volLast = Date.now(); volT = 0; cmd({ cmd: 'vol', v: vol.value / 100 }); };
+  if (Date.now() - volLast > 90) send(); else if (!volT) volT = setTimeout(send, 90);
+});
+
+// ---- tabs
+for (const b of document.querySelectorAll('nav button')) b.addEventListener('click', () => {
+  for (const x of document.querySelectorAll('nav button')) x.classList.toggle('on', x === b);
+  for (const p of document.querySelectorAll('.pane')) p.hidden = p.id !== 'p-' + b.dataset.tab;
+});
+
+// ---- search
+let qT = 0, qGen = 0;
+const qEl = $('#q'), resEl = $('#results');
+async function runSearch() {
+  const q = qEl.value.trim(), me = ++qGen;
+  if (!q) { results = []; resEl.innerHTML = '<div class="note">Type a song or an artist. Tap a result to play it on your PC.</div>'; return; }
+  resEl.innerHTML = '<div class="note">Searching…</div>';
+  try {
+    const r = await api('search?q=' + encodeURIComponent(q));
+    if (me !== qGen) return;
+    results = (r.results || []).map(x => ({ id: x.id, title: x.title, artist: x.artist, dur: x.dur, art: 'https://i.ytimg.com/vi/' + x.id + '/mqdefault.jpg' }));
+    resEl.innerHTML = results.length ? results.map((t, i) => item(t, i, true)).join('') : '<div class="note">Nothing found. Check the spelling or try fewer words.</div>';
+  } catch (e) { if (me === qGen) resEl.innerHTML = '<div class="note">Search did not work. Is Pulse still open on the PC?</div>'; }
+}
+qEl.addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(runSearch, 450); });
+qEl.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(qT); runSearch(); qEl.blur(); } });
+const slim = t => ({ id: t.id, title: t.title, artist: t.artist, dur: t.dur });
+resEl.addEventListener('click', e => {
+  const add = e.target.closest('[data-add]'), it = e.target.closest('.item');
+  if (add) { const t = results[+add.dataset.add]; if (t) { cmd({ cmd: 'queue', track: slim(t) }); toast('Added to queue'); } return; }
+  if (it) { const i = +it.dataset.i; if (results[i]) { cmd({ cmd: 'play', tracks: results.map(slim), i }); toast('Playing on your PC'); } }
+});
+$('#queue').addEventListener('click', e => { const it = e.target.closest('.item'); if (it) cmd({ cmd: 'jump', i: +it.dataset.i }); });
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden && KEY) { VER = -1; start(); } });
+
+// ---- go
+if (pendingCode) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
+if (KEY) start();
+else if (pendingCode) { const c = pendingCode; pendingCode = ''; pair(c).then(ok => { if (!ok) showPair(); }); }
+else showPair();
+})();
+</script>
+</body>
+</html>

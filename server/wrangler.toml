@@ -1,0 +1,12 @@
+# pulse-accounts: online copy of likes and playlists for Pulse. See src/index.js.
+# No secrets are needed. To run your own: wrangler d1 create pulse-accounts, put the id below,
+# wrangler d1 execute pulse-accounts --remote --file schema.sql, wrangler deploy, then point ACCT.api in ui/app.js at it.
+name = "pulse-accounts"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pulse-accounts"
+database_id = "5a7055d5-39cb-4dc0-9af2-b8d00576457b"

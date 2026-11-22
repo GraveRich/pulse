@@ -1,0 +1,107 @@
+PULSE - lightweight music player (YouTube + SoundCloud + local files)
+=====================================================================
+
+Installed app : %LOCALAPPDATA%\Programs\Pulse\Pulse.exe   (about 2.7 MB)
+Shortcuts     : Desktop "Pulse" and Start menu "Pulse"
+Your data     : %APPDATA%\Pulse        (likes, playlists, settings, music folders)
+Caches        : %LOCALAPPDATA%\Pulse   (WebView2 profile, cover art, lookups, log.txt)
+
+What it is
+----------
+A small native Windows window (C#, .NET Framework 4.8) around the WebView2 runtime that ships
+with Windows 11. No Electron, no account, no ads of its own, no tracking.
+
+- Local files: MP3, FLAC, M4A/AAC, OGG, Opus, WAV. Tags and covers read with TagLib#.
+- YouTube (the default search tab, since 1.1.0): search reads YouTube's public results page (about 20
+  videos per search, live streams left out); a pasted youtube.com / youtu.be link works too. Videos
+  play in YouTube's official embedded player (IFrame Player API), shown as a small picture at the
+  bottom of the sidebar. Ads are blocked inside Pulse: the host refuses requests to ad servers
+  (MainForm.AdFilters) and a script injected into the player frame (MainForm.YtFrameScript) drops the
+  ad slots from the player data and skips any ad that still starts. This breaks YouTube's terms and
+  YouTube changes its player often, so expect to have to update that script when ads come back.
+  Videos whose owner only allows youtube.com (errors 100/101/150) are hidden and skipped.
+  Song changes (since 1.3.0): YouTube uses two players. While one plays, the other loads the next
+  song of the queue in advance (silent, held at 0:00), so "next" is a swap (about 45 ms instead of
+  about 500 ms). Settings > Song changes sets the crossfade (Off / 2 / 4 / 6 / 10 s, default 4 s):
+  the next song starts that long before the end while the current one fades out. SoundCloud songs
+  are not loaded in advance and still take about 1.4 s to change.
+- Phone remote (since 1.4.0, Settings > Phone remote, off by default): Pulse serves one page
+  (ui\remote.html) on the home network, port 4587 (next free one if taken). The phone scans the QR
+  code or opens http://<PC address>:4587 and pairs once with the 6-digit code; after that it holds a
+  key (stored in %APPDATA%\Pulse\remote.json, "Forget phones" clears them and changes the code).
+  The page shows what plays, play/pause, next, previous, seek, volume, like, shuffle, repeat, a
+  YouTube search and the queue. The server is a plain TcpListener (class Remote) and only offers
+  that page, pairing, state, commands, search and cover art; it never serves files or settings.
+  Lock screen: after the first tap the page loops a silent sound and registers the PC's song with
+  the phone through the Media Session API, so the phone's lock screen and headphone buttons show
+  and control Pulse. On a real iPhone (1.4.0) the card and pause worked but iOS showed its default
+  10-second skip buttons, which did nothing. 1.4.1: next/previous are registered again each time
+  the sound starts playing with the two skip actions cleared (what iOS needs to show song buttons),
+  and as a fallback a 10-second jump of the silent sound (10 minutes long, kept at its middle) is
+  read as next / previous song. The fallback is tested on the PC, the iPhone result is not known. Windows asks once to allow Pulse on the network when the remote is switched on.
+- SoundCloud: played through SoundCloud's official embedded player (Widget API), kept off-screen.
+  Search uses SoundCloud's public search page (10 results per tab: tracks, playlists, artists) and
+  the official oEmbed endpoint for titles and artwork. Pasting any soundcloud.com link works.
+- Liked songs, your own playlists (local + SoundCloud mixed), saved SoundCloud playlists/artists,
+  queue, shuffle, repeat, keyboard media keys (only grabbed while Pulse is playing).
+- Global hotkeys (since 1.2.0, Settings > Global hotkeys): play/pause, next, previous, volume up/down
+  and like, usable from inside any game. Defaults Ctrl+Alt+P, Ctrl+Alt+Right/Left, Ctrl+Alt+Up/Down;
+  each one can be re-picked or removed. They are held with RegisterHotKey for as long as Pulse is
+  open, so a key used here does not reach other apps. A key another app already holds is flagged in
+  Settings (Ctrl+Alt+Space belongs to another app on this PC, which is why it is not the default).
+
+Known limits (SoundCloud's rules, not bugs)
+-------------------------------------------
+- Label releases that SoundCloud serves DRM-encrypted do not play in ANY embedded player (its
+  licence server answers 403, also in real Edge). Pulse checks each visible SoundCloud track with
+  up to three silent widgets (about 3 s for a search) and hides the locked ones; a line under the
+  list says how many were hidden. Settings > SoundCloud > "Hide tracks that can't play" turns this
+  off (they then show as LOCKED and are skipped). Liked songs and your own playlists never hide.
+- Mainstream artists are mostly locked: a search like "drake" leaves 1 playable result out of 10.
+- Some tracks are 30 second previews (shown as PREVIEW).
+- Spotify is not supported: it cannot be played ad-free without Premium.
+- YouTube is video, so it uses more memory and network than SoundCloud or local files.
+
+Build
+-----
+    .\build.ps1                build + install + shortcuts. If Pulse is open, the running exe is
+                               renamed to Pulse.exe.old and the new version starts at the next launch.
+    .\build.ps1 -Out <folder>  build somewhere else, no shortcuts
+Uses C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe (C# 5 syntax only), no SDK needed.
+lib\ holds Microsoft.Web.WebView2 1.0.4258.31 and TagLibSharp 2.3.0 (from nuget.org).
+Icon: python tools\make_icon.py (needs Pillow).
+
+Command line (for testing)
+--------------------------
+    --data <dir>         use a separate data/cache folder (also skips the single-instance check)
+    --mute               force volume to 0
+    --hidden             off-screen window that never takes focus
+    --minimized          start minimized without taking focus
+    --no-activate        normal window, but do not take focus
+    --self-test <file>   hidden + muted end-to-end test, writes JSON to <file> and exits
+    --headless --port N --token T    server only (open http://localhost:N/?k=T in a browser)
+    --remote-local       phone remote listens on 127.0.0.1 only (tests; hidden runs always do this)
+    --dev                enable DevTools / context menu
+Adding &debug=1 to the page URL exposes window.__pulse for scripted tests.
+
+Layout
+------
+    src\Program.cs      host: window, localhost server, library scanner, YouTube + SoundCloud lookups,
+                        ad filter, media keys
+    src\app.manifest, src\pulse.ico
+    ui\index.html, app.css, app.js, fonts\ (Inter, OFL)
+    lib\                WebView2 + TagLib DLLs
+    tools\make_icon.py
+
+Accounts (since 1.5.0)
+----------------------
+Optional. Settings > Account: username + password (no email), a recovery code shown once at sign-up.
+The app (ACCT in uipp.js) keeps an online copy of liked songs, playlists and saved SoundCloud pages on the
+Cloudflare Worker in server\ (D1 database pulse-accounts). Songs from local files are left out of the copy and
+kept in place when the online copy is applied. Saving: about 5 s after a change, on start, every 5 minutes.
+If two PCs changed things, the app merges both (nothing is dropped); otherwise the online copy is taken as is.
+The session token sits in %APPDATA%\Pulse\state.json. Test the app against a local server with
+&debug=1&acctapi=http://127.0.0.1:8797 added to the page URL.
+
+New version notice (since 1.5.0): UPDATE in uipp.js reads the latest GitHub release once per start.
+

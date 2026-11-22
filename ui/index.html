@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulse</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <div class="brand"><img src="icon.png" alt=""><span>Pulse</span></div>
+    <nav id="nav-main">
+      <button class="nav" data-nav="home"><i data-ic="home"></i><span>Home</span></button>
+      <button class="nav" data-nav="search"><i data-ic="search"></i><span>Search</span></button>
+    </nav>
+    <div class="side-title">Your library</div>
+    <nav id="nav-lib">
+      <button class="nav" data-nav="liked"><i data-ic="heart"></i><span>Liked songs</span><em id="n-liked"></em></button>
+      <button class="nav" data-nav="local"><i data-ic="folder"></i><span>Local files</span><em id="n-local"></em></button>
+    </nav>
+    <div class="side-title row">
+      <span>Playlists</span>
+      <button class="icon-btn" id="new-pl" title="New playlist"><i data-ic="plus"></i></button>
+    </div>
+    <div id="side-lists"></div>
+    <div id="yt-box" hidden><div id="yt-player-0"></div><div id="yt-player-1"></div></div>
+    <button class="nav bottom" data-nav="settings"><i data-ic="gear"></i><span>Settings</span></button>
+  </aside>
+
+  <main id="main">
+    <header id="top">
+      <button class="icon-btn round" id="go-back" title="Back (Alt+Left)"><i data-ic="left"></i></button>
+      <button class="icon-btn round" id="go-fwd" title="Forward (Alt+Right)"><i data-ic="right"></i></button>
+      <label id="searchbox">
+        <i data-ic="search"></i>
+        <input id="q" type="text" placeholder="Search any song, or paste a YouTube or SoundCloud link" spellcheck="false" autocomplete="off">
+        <button class="icon-btn" id="q-clear" title="Clear" hidden><i data-ic="x"></i></button>
+      </label>
+    </header>
+    <div id="view" tabindex="-1"></div>
+  </main>
+
+  <aside id="queue" hidden>
+    <div class="q-head"><b>Queue</b><span class="grow"></span><button class="text-btn" id="q-clear-all">Clear</button><button class="icon-btn" id="q-close" title="Close"><i data-ic="x"></i></button></div>
+    <div id="q-body"></div>
+  </aside>
+
+  <footer id="bar">
+    <div class="now">
+      <div class="art" id="b-art"></div>
+      <div class="meta">
+        <div class="t" id="b-title">Nothing playing</div>
+        <div class="a" id="b-artist">Pick something to start</div>
+      </div>
+      <button class="icon-btn" id="b-like" title="Like" hidden><i data-ic="heart"></i></button>
+    </div>
+    <div class="ctl">
+      <div class="btns">
+        <button class="icon-btn" id="b-shuffle" title="Shuffle"><i data-ic="shuffle"></i></button>
+        <button class="icon-btn" id="b-prev" title="Previous (Ctrl+Left)"><i data-ic="prev"></i></button>
+        <button class="play-btn" id="b-play" title="Play / pause (Space)"><i data-ic="play"></i></button>
+        <button class="icon-btn" id="b-next" title="Next (Ctrl+Right)"><i data-ic="next"></i></button>
+        <button class="icon-btn" id="b-repeat" title="Repeat"><i data-ic="repeat"></i></button>
+      </div>
+      <div class="seek">
+        <span id="b-cur">0:00</span>
+        <div class="slider" id="b-seek"><div class="fill"></div><div class="knob"></div></div>
+        <span id="b-dur">0:00</span>
+      </div>
+    </div>
+    <div class="right">
+      <a id="b-src" hidden title="Open this track on SoundCloud"></a>
+      <button class="icon-btn" id="b-queue" title="Queue"><i data-ic="queue"></i></button>
+      <button class="icon-btn" id="b-mute" title="Mute"><i data-ic="vol"></i></button>
+      <div class="slider small" id="b-vol"><div class="fill"></div><div class="knob"></div></div>
+    </div>
+  </footer>
+</div>
+
+<div id="menu" hidden></div>
+<div id="modal" hidden></div>
+<div id="toasts"></div>
+<div id="sc-holder" aria-hidden="true"></div>
+<audio id="audio" preload="auto"></audio>
+<script src="app.js"></script>
+</body>
+</html>
