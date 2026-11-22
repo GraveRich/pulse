@@ -66,6 +66,10 @@ That builds and installs to `%LOCALAPPDATA%\Programs\Pulse` with Desktop and Sta
 - `server\`: the account server (Cloudflare Worker + D1). `node server\test.mjs` checks it against a local `wrangler dev`.
 - `docs\DEV-NOTES.txt`: how the parts work, command-line flags for testing, and what was tried and did not work.
 
+## Licence
+
+Pulse's own code is under the [MIT licence](LICENSE). The third-party parts below keep their own licences.
+
 ## Third-party parts
 
 - Microsoft Edge WebView2 SDK (`lib\Microsoft.Web.WebView2.*.dll`, `lib\WebView2Loader.dll`), see `lib\WebView2-LICENSE.txt`.
